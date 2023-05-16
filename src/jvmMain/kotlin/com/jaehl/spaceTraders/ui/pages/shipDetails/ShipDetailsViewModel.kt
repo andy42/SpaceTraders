@@ -269,13 +269,6 @@ class ShipDetailsViewModel @Inject constructor(
                     )
                 ),
                 SellOrder(
-                    destinationId = "X1-ZA40-15970B",
-                    warpRequired = false,
-                    items = listOf(
-                        "ICE_WATER"
-                    )
-                ),
-                SellOrder(
                     destinationId = "X1-ZA40-69371X",
                     warpRequired = false,
                     items = listOf(

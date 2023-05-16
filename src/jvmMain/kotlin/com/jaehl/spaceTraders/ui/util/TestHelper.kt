@@ -5,10 +5,12 @@ object TestHelper {
     fun createEnumString() : String {
         var logString = ""
         listOf<String>(
-            "SCARCE",
-            "LIMITED",
-            "MODERATE",
-            "ABUNDANT",
+            "COSMIC",
+            "VOID",
+            "GALACTIC",
+            "QUANTUM",
+            "DOMINION"
+
 
         ).forEach { key ->
             var name = ""

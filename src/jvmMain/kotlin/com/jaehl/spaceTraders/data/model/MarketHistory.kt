@@ -11,11 +11,14 @@ data class MarketHistory(
     val exports : List<SymbolDetails> = listOf(),
     val exchange : List<SymbolDetails> = listOf(),
 
+    val transactions : List<Transaction> = listOf(),
+    val tradeGoods : List<TradeGood> = listOf(),
+
     val tradeHistory : List<TradeHistory> = listOf()
 ) {
 
     fun getLatestTradeGood(cargoId : String) : TradeGood? {
-        return tradeHistory.first().tradeGoods.firstOrNull {it.symbol == cargoId}
+        return tradeGoods.firstOrNull {it.symbol == cargoId}
     }
 
     data class TradeHistory(
@@ -42,7 +45,9 @@ data class MarketHistory(
                 imports = market.imports,
                 exports = market.exports,
                 exchange = market.exchange,
-                tradeHistory = if(detailedInfo) listOf(TradeHistory.create(date, market)) else listOf<TradeHistory>()
+                transactions = market.transactions,
+                tradeGoods = market.tradeGoods,
+                tradeHistory = listOf<TradeHistory>()
             )
         }
     }

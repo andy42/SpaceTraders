@@ -9,6 +9,9 @@ import kotlin.io.path.exists
 interface LocalFileConfig {
     fun getCargoInfoFile() : File
     fun getMarketHistoryFile(waypointId: String) : File
+    fun getSystemsFile() : File
+    fun getShipyardFile() : File
+    fun getAgentFile() : File
 }
 
 class LocalFileConfigImp @Inject constructor() : LocalFileConfig {
@@ -20,7 +23,6 @@ class LocalFileConfigImp @Inject constructor() : LocalFileConfig {
         }
         return directory.toFile()
     }
-
 
     private fun getFile(fileName : String) : File {
         val directory = getProjectUserDir()
@@ -38,6 +40,18 @@ class LocalFileConfigImp @Inject constructor() : LocalFileConfig {
             marketDirectory.createDirectory()
         }
         return Paths.get(marketDirectory.toFile().absolutePath, "${waypointId}.json").toFile()
+    }
+
+    override fun getSystemsFile(): File {
+        return getFile("system.json")
+    }
+
+    override fun getShipyardFile(): File {
+        return getFile("shipyard.json")
+    }
+
+    override fun getAgentFile(): File {
+        return getFile("agents.json")
     }
 
     companion object {

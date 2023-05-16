@@ -10,7 +10,7 @@ import androidx.compose.ui.unit.dp
 import com.jaehl.spaceTraders.ui.R
 import com.jaehl.spaceTraders.ui.component.AppBar
 import com.jaehl.spaceTraders.ui.component.HorizontalDivider
-import com.jaehl.spaceTraders.ui.pages.shipDetails.CargoRow
+import com.jaehl.spaceTraders.ui.component.WaypointIcon
 import kotlin.math.absoluteValue
 
 @Composable
@@ -91,13 +91,25 @@ fun Waypoint(
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
 
-        Column(
-            modifier = Modifier
+        Row(
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text = systemWaypoint.symbol)
-            Text(text = "Type : ${systemWaypoint.type}")
-            if(systemWaypoint.distance != null){
-                Text(text = "Distance : ${systemWaypoint.distance.absoluteValue}")
+            WaypointIcon(
+                modifier = Modifier
+                    .width(40.dp)
+                    .height(40.dp),
+                tint = MaterialTheme.colors.onSurface,
+                waypointType = systemWaypoint.type
+            )
+            Column(
+                modifier = Modifier
+                    .padding(start = 20.dp)
+            ) {
+                Text(text = systemWaypoint.symbol)
+                Text(text = "Type : ${systemWaypoint.type.value}")
+                if (systemWaypoint.distance != null) {
+                    Text(text = "Distance : ${systemWaypoint.distance.absoluteValue}")
+                }
             }
         }
         Row {

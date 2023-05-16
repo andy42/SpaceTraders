@@ -51,9 +51,21 @@ fun HomePage(
                     .padding(top = 10.dp),
                 viewModel = viewModel
             )
+            Button(
+                modifier = Modifier
+                    .padding(start = 10.dp, top = 10.dp),
+                onClick = {
+                    viewModel.openSystemSearchClick()
+                }
+            ) {
+                Text(
+                    modifier = Modifier,
+                    text = "System Search"
+                )
+            }
             Ships(
                 modifier = Modifier
-                    .padding(top = 10.dp),
+                    .padding(top = 10.dp, bottom = 10.dp),
                 viewModel = viewModel,
                 ships = viewModel.ships
             )

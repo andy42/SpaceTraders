@@ -21,4 +21,9 @@ class ServiceModule {
     fun systemService(systemService : SystemServiceImp) : SystemService {
         return systemService
     }
+
+    @Provides
+    fun contractService(contractServiceImp : ContractServiceImp) : ContractService {
+        return contractServiceImp
+    }
 }

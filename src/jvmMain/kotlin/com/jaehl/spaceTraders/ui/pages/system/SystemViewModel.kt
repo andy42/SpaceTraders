@@ -3,6 +3,7 @@ import kotlin.math.*
 
 import androidx.compose.runtime.mutableStateListOf
 import com.jaehl.spaceTraders.data.model.Ship
+import com.jaehl.spaceTraders.data.model.WaypointType
 import com.jaehl.spaceTraders.data.services.FleetService
 import com.jaehl.spaceTraders.data.services.SystemService
 import com.jaehl.spaceTraders.extensions.postSwap
@@ -59,7 +60,7 @@ class SystemViewModel @Inject constructor(
                     val distance = ship?.getPosition()?.distance(it.getPosition())
                     SystemWaypointViewModel(
                         symbol = it.symbol,
-                        type = it.type.value,
+                        type = it.type,
                         distance = if(distance != null) ceil(abs(distance)).toInt() else null,
                         hasMarketplace = it.hasMarketplace(),
                         hasShipyard = it.hasShipyard(),
@@ -97,7 +98,7 @@ class SystemViewModel @Inject constructor(
 
     data class SystemWaypointViewModel(
         val symbol : String,
-        val type : String,
+        val type : WaypointType,
         val distance : Int? = null,
         val hasMarketplace : Boolean,
         val hasShipyard : Boolean,

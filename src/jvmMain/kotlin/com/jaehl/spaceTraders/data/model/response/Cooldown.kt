@@ -7,4 +7,11 @@ data class Cooldown(
     val totalSeconds : Int = 0,
     val remainingSeconds : Int = 0,
     val expiration : Date = Date()
-)
+) {
+    fun isFinished() : Boolean {
+        return (expiration.time <= Date().time)
+    }
+    fun getDelay() : Long {
+        return (expiration.time - Date().time)
+    }
+}

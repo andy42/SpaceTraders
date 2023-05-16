@@ -2,6 +2,7 @@ package com.jaehl.spaceTraders.di.modules
 
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import com.jaehl.spaceTraders.data.remote.RateLimitInterceptor
 import com.jaehl.spaceTraders.data.remote.SpaceTradersApi
 import dagger.Module
 import dagger.Provides
@@ -10,6 +11,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 import javax.inject.Qualifier
+import javax.inject.Singleton
 
 
 @Qualifier
@@ -19,10 +21,14 @@ public annotation class BaseUrl
 class NetworkModule {
 
     @Provides
-    fun okHttpClient() : OkHttpClient{
+    fun rateLimitInterceptor() : RateLimitInterceptor = RateLimitInterceptor(1.8)
+
+    @Provides
+    fun okHttpClient(rateLimitInterceptor : RateLimitInterceptor) : OkHttpClient{
         return OkHttpClient.Builder()
             .readTimeout(60, TimeUnit.SECONDS)
             .callTimeout(60, TimeUnit.SECONDS)
+            //.addInterceptor(rateLimitInterceptor)
             .connectTimeout(60, TimeUnit.SECONDS)
             .build()
     }
@@ -52,6 +58,7 @@ class NetworkModule {
     }
 
     @Provides
+    @Singleton
     fun spaceTradersApi(retrofit : Retrofit) : SpaceTradersApi {
         return retrofit.create(SpaceTradersApi::class.java)
     }

@@ -6,8 +6,15 @@ data class StarSystem(
     val symbol : String = "",
     val sectorSymbol : String = "",
     val type : SystemType,
+    val x : Int = 0,
+    val y : Int = 0,
     val waypoints : List<SystemWaypoint> = listOf()
 ) {
+
+    fun getPosition() : Vector2d {
+        return Vector2d(x, y)
+    }
+
     enum class SystemType(val value : String) {
         @SerializedName("NEUTRON_STAR")
         NeutronStar("Neutron Star"),
@@ -38,7 +45,5 @@ data class StarSystem(
 
         @SerializedName("UNSTABLE")
         Unstable("Unstable")
-
-
     }
 }

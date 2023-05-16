@@ -31,7 +31,6 @@ class JettisonCargoDialogViewModel @Inject constructor(
 
         this.config = config
 
-
         viewModelScope.launch {
             val cargo = fleetService.getShip(config.shipId).cargo.inventory.firstOrNull {it.symbol == config.cargoId} ?: return@launch
             cargoName.value = cargo.name

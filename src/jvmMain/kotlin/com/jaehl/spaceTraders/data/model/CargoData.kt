@@ -4,7 +4,8 @@ data class CargoData(
     val symbol : String = "",
     val name : String = "",
     val description : String = "",
-    val refineTo : String? = null
+    val refineTo : String? = null,
+    val icon : String = "package.png"
 ) {
     companion object {
         fun create(inventoryItem : Ship.Cargo.InventoryItem) : CargoData {

@@ -10,12 +10,16 @@ import com.arkivanov.decompose.router.stack.childStack
 import com.arkivanov.decompose.router.stack.pop
 import com.arkivanov.decompose.router.stack.push
 import com.arkivanov.essenty.parcelable.Parcelable
+import com.jaehl.spaceTraders.data.repo.AgentRepo
+import com.jaehl.spaceTraders.data.services.AuthService
 import com.jaehl.spaceTraders.di.AppComponent
 import com.jaehl.spaceTraders.di.DaggerAppComponent
 import com.jaehl.spaceTraders.ui.pages.homePage.HomePageComponent
 import com.jaehl.spaceTraders.ui.pages.market.MarketComponent
 import com.jaehl.spaceTraders.ui.pages.shipDetails.ShipDetailsComponent
 import com.jaehl.spaceTraders.ui.pages.system.SystemComponent
+import com.jaehl.spaceTraders.ui.pages.systemSearch.SystemSearchComponent
+import javax.inject.Inject
 
 interface NavBackListener {
     fun navigateBack()
@@ -28,6 +32,7 @@ interface NavShipListener {
 interface NavSystemListener {
     fun openSystemDetails(systemId : String, shipId : String?, marketsOnly : Boolean, travelOptions : Boolean)
     fun openMarket(systemId : String, waypointId : String, shipId : String?)
+    fun openSystemSearch()
 }
 
 class NavHostComponent(
@@ -41,6 +46,10 @@ class NavHostComponent(
     private val appComponent: AppComponent = DaggerAppComponent.create()
 
     private val navigation = StackNavigation<ScreenConfig>()
+
+    init {
+        appComponent.inject(this)
+    }
 
     private val _childStack =
         childStack(
@@ -59,7 +68,8 @@ class NavHostComponent(
                 appComponent = appComponent,
                 componentContext = componentContext,
                 navBackListener = this,
-                navShipListener = this
+                navShipListener = this,
+                navSystemListener = this
             )
             is ScreenConfig.ShipDetails -> ShipDetailsComponent(
                 appComponent = appComponent,
@@ -86,6 +96,11 @@ class NavHostComponent(
                 waypointId = screenConfig.waypointId,
                 shipId = screenConfig.shipId
             )
+            is ScreenConfig.SystemSearch -> SystemSearchComponent(
+                appComponent = appComponent,
+                componentContext = componentContext,
+                navBackListener = this
+            )
         }
     }
 
@@ -107,6 +122,10 @@ class NavHostComponent(
             travelOptions = travelOptions
 
         ))
+    }
+
+    override fun openSystemSearch() {
+        navigation.push(ScreenConfig.SystemSearch)
     }
 
     override fun openMarket(systemId : String, waypointId : String, shipId : String?) {
@@ -142,6 +161,7 @@ class NavHostComponent(
             val waypointId : String,
             val shipId : String?
         ) : ScreenConfig()
+        object SystemSearch : ScreenConfig()
     }
 }
 

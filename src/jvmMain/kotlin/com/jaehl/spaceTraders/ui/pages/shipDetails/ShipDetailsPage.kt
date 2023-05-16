@@ -1,25 +1,46 @@
 package com.jaehl.spaceTraders.ui.pages.shipDetails
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.res.loadImageBitmap
+import androidx.compose.ui.res.useResource
 import androidx.compose.ui.unit.dp
-import com.jaehl.spaceTraders.data.model.response.Cooldown
+import com.jaehl.spaceTraders.extensions.secondsFromNow
 import com.jaehl.spaceTraders.ui.R
 import com.jaehl.spaceTraders.ui.component.AppBar
 import com.jaehl.spaceTraders.ui.component.HorizontalDivider
-import com.jaehl.spaceTraders.util.Logger
-import com.jaehl.spaceTraders.util.LoggerImp
+import com.jaehl.spaceTraders.ui.component.ItemChip
+import com.jaehl.spaceTraders.ui.component.WaypointIcon
+import com.jaehl.spaceTraders.ui.pages.shipDetails.viewModel.*
 import kotlinx.coroutines.delay
+import java.util.Date
 import kotlin.time.Duration.Companion.seconds
 
 @Composable
 fun ShipDetailsPage(
     viewModel : ShipDetailsViewModel
 ) {
+    LaunchedEffect(viewModel.isCoolingDown.value) {
+        while (viewModel.isCoolingDown.value) {
+            delay(1.seconds)
+            viewModel.coolingDownSeconds.value = ((viewModel.coolingDownExpiration.value.time - Date().time) /1000).toInt()
+        }
+    }
+    LaunchedEffect(viewModel.isInTransit.value) {
+
+        while (viewModel.isInTransit.value) {
+            delay(1.seconds)
+            viewModel.secondsTillArrival.value = ((viewModel.shipViewModel.value.nav.arrival.time - Date().time) / 1000).toInt()
+        }
+    }
+
+
     Box {
         Column(
             modifier = Modifier
@@ -55,6 +76,15 @@ fun ShipDetailsPage(
                     miningViewModel = viewModel.miningViewModel.value,
                     isCoolingDown = viewModel.isCoolingDown.value
                 )
+                MiningSurvey(
+                    modifier = Modifier,
+                    viewModel = viewModel,
+                    miningSurveyViewModel = viewModel.miningSurveyViewModel.value
+                )
+                ShipTask(
+                    modifier = Modifier,
+                    viewModel = viewModel,
+                )
             }
         }
     }
@@ -64,7 +94,7 @@ fun ShipDetailsPage(
 fun ShipDetails(
     modifier: Modifier,
     viewModel : ShipDetailsViewModel,
-    shipViewModel : ShipDetailsViewModel.ShipViewModel
+    shipViewModel : ShipViewModel
 ) {
     Card(
         modifier = modifier
@@ -96,7 +126,7 @@ fun ShipDetails(
 fun ShipStatus(
     modifier : Modifier,
     viewModel : ShipDetailsViewModel,
-    statusViewModel : ShipDetailsViewModel.StatusViewModel
+    statusViewModel : StatusViewModel
 ) {
     Row(
         modifier = modifier
@@ -124,7 +154,7 @@ fun ShipStatus(
 fun ShipFuel(
     modifier : Modifier,
     viewModel : ShipDetailsViewModel,
-    fuelViewModel : ShipDetailsViewModel.FuelViewModel
+    fuelViewModel : FuelViewModel
 ) {
     Row(
         modifier = modifier
@@ -153,7 +183,7 @@ fun ShipFuel(
 fun ShipNav(
     modifier : Modifier,
     viewModel : ShipDetailsViewModel,
-    navViewModel : ShipDetailsViewModel.NavViewModel
+    navViewModel : NavViewModel
 ) {
     Row(
         modifier = modifier
@@ -161,8 +191,16 @@ fun ShipNav(
         verticalAlignment = Alignment.CenterVertically
     ) {
 
+        WaypointIcon(
+            modifier = Modifier
+                .width(30.dp)
+                .height(30.dp),
+            tint = MaterialTheme.colors.onSurface,
+            waypointType = navViewModel.waypointType
+        )
         Column(
             modifier = Modifier
+                .padding(start = 20.dp)
         ) {
             Text(text = navViewModel.location)
             Text(text = navViewModel.locationType)
@@ -173,7 +211,7 @@ fun ShipNav(
             onClick = {
                 viewModel.navigateToClick()
             },
-            enabled = navViewModel.enabled
+            enabled = !viewModel.isInTransit.value
         ) {
             Text(
                 modifier = Modifier,
@@ -192,6 +230,13 @@ fun ShipNav(
                 text = "View System"
             )
         }
+        if(viewModel.isInTransit.value) {
+            Text(
+                modifier = Modifier
+                    .padding(start = 10.dp),
+                text = "${viewModel.secondsTillArrival.value}"
+            )
+        }
     }
 }
 
@@ -199,7 +244,7 @@ fun ShipNav(
 fun Cargo(
     modifier : Modifier,
     viewModel : ShipDetailsViewModel,
-    cargoViewModel : ShipDetailsViewModel.CargoViewModel
+    cargoViewModel : CargoViewModel
 ) {
 
     Card(
@@ -251,7 +296,7 @@ fun Cargo(
 fun CargoRow(
     viewModel : ShipDetailsViewModel,
     index : Int,
-    cargoItem : ShipDetailsViewModel.CargoViewModel.CargoItemViewModel
+    cargoItem : CargoViewModel.CargoItemViewModel
 ) {
     Row(
         modifier = Modifier
@@ -261,39 +306,63 @@ fun CargoRow(
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
 
-        Column(
-            modifier = Modifier
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Start
         ) {
-            Text(text = cargoItem.name)
-            Text(text = "Units : ${cargoItem.units}")
+            Image(
+                bitmap = remember { useResource(cargoItem.icon) { loadImageBitmap(it) } },
+                "",
+                colorFilter = ColorFilter.tint(
+                    MaterialTheme.colors.onSurface
+                ),
+                modifier = Modifier
+                    .padding(start = 10.dp)
+                    .width(30.dp)
+                    .height(30.dp)
+                    .align(alignment = Alignment.CenterVertically)
+            )
+
+            Column(
+                modifier = Modifier
+                    .padding(start = 20.dp)
+            ) {
+                Text(text = cargoItem.name)
+                Text(text = "Units : ${cargoItem.units}")
+            }
         }
 
-        Button(
-            modifier = Modifier
-                .padding(start = 10.dp),
-            onClick = {
-                viewModel.onJettisonCargoClick(cargoItem.symbol)
-            },
-            enabled = cargoItem.canJettison
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.End
         ) {
-            Text(
-                modifier = Modifier,
-                text = "Jettison"
-            )
-        }
+            Button(
+                modifier = Modifier
+                    .padding(start = 10.dp),
+                onClick = {
+                    viewModel.onJettisonCargoClick(cargoItem.symbol)
+                },
+                enabled = cargoItem.canJettison
+            ) {
+                Text(
+                    modifier = Modifier,
+                    text = "Jettison"
+                )
+            }
 
-        Button(
-            modifier = Modifier
-                .padding(start = 10.dp),
-            onClick = {
-                viewModel.refineCargoItemClick(cargoItem.symbol)
-            },
-            enabled = cargoItem.isRefinable
-        ) {
-            Text(
-                modifier = Modifier,
-                text = "Refine"
-            )
+            Button(
+                modifier = Modifier
+                    .padding(start = 10.dp),
+                onClick = {
+                    viewModel.refineCargoItemClick(cargoItem.symbol)
+                },
+                enabled = cargoItem.isRefinable
+            ) {
+                Text(
+                    modifier = Modifier,
+                    text = "Refine"
+                )
+            }
         }
     }
 }
@@ -302,7 +371,7 @@ fun CargoRow(
 fun Mining(
     modifier : Modifier,
     viewModel : ShipDetailsViewModel,
-    miningViewModel : ShipDetailsViewModel.MiningViewModel,
+    miningViewModel : MiningViewModel,
     isCoolingDown: Boolean
 ) {
     if(!miningViewModel.isVisible) return
@@ -311,12 +380,6 @@ fun Mining(
             .fillMaxWidth()
             .padding(top = 20.dp)
     ) {
-        LaunchedEffect(isCoolingDown) {
-            while (viewModel.isCoolingDown.value) {
-                delay(1.seconds)
-                viewModel.coolDownTick.value -= 1
-            }
-        }
 
         Column(
             modifier = Modifier
@@ -339,7 +402,7 @@ fun Mining(
                 onClick = {
                     viewModel.startMiningClick()
                 },
-                enabled = miningViewModel.canMine && !miningViewModel.isCoolingDown
+                enabled = miningViewModel.canMine && !viewModel.isCoolingDown.value
             ) {
                 Text(
                     modifier = Modifier,
@@ -349,12 +412,109 @@ fun Mining(
             if(viewModel.isCoolingDown.value) {
                 Text(
                     modifier = modifier.padding(top = 10.dp),
+                    text = "Cool Down : ${viewModel.coolingDownSeconds.value}"
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun MiningSurvey(
+    modifier : Modifier,
+    viewModel : ShipDetailsViewModel,
+    miningSurveyViewModel : MiningSurveyViewModel
+) {
+    if(!miningSurveyViewModel.isVisible) return
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = 20.dp)
+    ) {
+
+        Column(
+            modifier = Modifier
+                .padding(20.dp)
+        ) {
+            Text(
+                modifier = modifier,
+                text = "Mining Survey"
+            )
+
+            miningSurveyViewModel.surveyResults.forEachIndexed { index, surveyResult ->
+
+                Text(text = "Size : ${surveyResult.size.value}")
+                Text(text = "Expiration : ${surveyResult.expiration.secondsFromNow()}")
+                com.jaehl.spaceTraders.ui.component.FlowRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                ) {
+                    surveyResult.deposits.forEach { deposit ->
+                        ItemChip(
+                            modifier = Modifier,
+                            name = deposit.symbol
+                        )
+                    }
+                }
+            }
+
+            Button(
+                modifier = Modifier
+                    .padding(top = 10.dp),
+                onClick = {
+                    viewModel.startMiningSurveyClick()
+                },
+                enabled = miningSurveyViewModel.canScan && !viewModel.isCoolingDown.value
+            ) {
+                Text(
+                    modifier = Modifier,
+                    text = "Start Mining Survey"
+                )
+            }
+            if(viewModel.isCoolingDown.value) {
+                Text(
+                    modifier = modifier.padding(top = 10.dp),
                     text = "Cool Down : ${viewModel.coolDownTick.value}"
                 )
             }
-
         }
-
     }
 
+}
+
+@Composable
+fun ShipTask(
+    modifier : Modifier,
+    viewModel : ShipDetailsViewModel,
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = 20.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(20.dp)
+        ) {
+            Button(
+                modifier = Modifier
+                    .padding(top = 10.dp),
+                onClick = {
+                    viewModel.startTaskClick()
+                },
+                enabled = viewModel.taskButtonEnabled.value
+            ) {
+                Text(
+                    modifier = Modifier,
+                    text = "Start Task"
+                )
+            }
+            if (viewModel.isCoolingDown.value) {
+                Text(
+                    modifier = modifier.padding(top = 10.dp),
+                    text = "Cool Down : ${viewModel.coolDownTick.value}"
+                )
+            }
+        }
+    }
 }

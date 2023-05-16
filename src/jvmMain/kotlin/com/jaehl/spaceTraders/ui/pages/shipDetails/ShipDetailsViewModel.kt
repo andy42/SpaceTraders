@@ -5,7 +5,6 @@ import androidx.compose.runtime.mutableStateOf
 import com.jaehl.spaceTraders.data.model.CargoData
 import com.jaehl.spaceTraders.data.model.Ship
 import com.jaehl.spaceTraders.data.model.WaypointType
-import com.jaehl.spaceTraders.data.model.response.Cooldown
 import com.jaehl.spaceTraders.data.repo.CargoInfoRepo
 import com.jaehl.spaceTraders.data.services.FleetService
 import com.jaehl.spaceTraders.ui.util.ViewModel
@@ -16,17 +15,25 @@ import javax.inject.Inject
 
 import com.jaehl.spaceTraders.ui.navigation.NavBackListener
 import com.jaehl.spaceTraders.ui.navigation.NavSystemListener
+import com.jaehl.spaceTraders.ui.pages.shipDetails.tasks.*
+import com.jaehl.spaceTraders.ui.pages.shipDetails.viewModel.MiningSurveyViewModel
+import com.jaehl.spaceTraders.ui.pages.shipDetails.viewModel.MiningViewModel
+import com.jaehl.spaceTraders.ui.pages.shipDetails.viewModel.ShipViewModel
+import com.jaehl.spaceTraders.ui.pages.shipDetails.viewModel.StatusViewModel
 import kotlinx.coroutines.delay
-import java.time.Duration
 import java.util.Date
-import java.util.Timer
-import kotlin.concurrent.fixedRateTimer
-import kotlin.math.abs
 
 class ShipDetailsViewModel @Inject constructor(
     private val logger : Logger,
     private val fleetService : FleetService,
-    private val cargoInfoRepo : CargoInfoRepo
+    private val cargoInfoRepo : CargoInfoRepo,
+    private val task : Task,
+    private val marketSearchTask: MarketSearchTask,
+    private val soloMiningTask : SoloMiningTask,
+    private val basicTasks : BasicTasks,
+    private val oreMiningSellingTask : OreMiningSellingTask,
+    private val oreMineRefineSellTask : OreMineRefineSellTask,
+    private val contractTask : ContractTask
 ) : ViewModel() {
 
     var navBackListener : NavBackListener? = null
@@ -35,18 +42,25 @@ class ShipDetailsViewModel @Inject constructor(
 
     var coolDownTick = mutableStateOf(0)
     var isCoolingDown = mutableStateOf(false)
+    var coolingDownExpiration = mutableStateOf(Date())
+    var coolingDownSeconds = mutableStateOf(0)
+
+    var isInTransit = mutableStateOf(false)
+    var secondsTillArrival = mutableStateOf(0)
+
+    var taskButtonEnabled = mutableStateOf(true)
 
     private lateinit var shipId : String
 
     private var ship : Ship? = null
 
-//    private var coolDownTime : Duration = Duration.ZERO
-//    private var timer : Timer? = null
-
     var shipViewModel = mutableStateOf(ShipViewModel.create(Ship(), cargoInfoRepo))
         private set
 
     var miningViewModel = mutableStateOf(MiningViewModel())
+        private set
+
+    var miningSurveyViewModel = mutableStateOf(MiningSurveyViewModel())
         private set
 
     fun init(viewModelScope: CoroutineScope, shipId : String) {
@@ -55,23 +69,28 @@ class ShipDetailsViewModel @Inject constructor(
         requestDataUpdate()
     }
 
-//    private fun startCoolDownTimer(seconds : Long) {
-//        coolDownTime = Duration.ofSeconds(seconds)
-//        timer?.cancel()
-//        timer = fixedRateTimer(
-//            initialDelay = 0L,
-//            period = 1000L
-//        ){
-//            coolDownTime = coolDownTime.minus(Duration.ofSeconds(1L))
-//            if(coolDownTime < Duration.ZERO) {
-//                coolDownTime = Duration.ZERO
-//            }
-//            updateUi()
-//        }
-//    }
+    private suspend fun updateNavStatus(){
+        ship?.let {
+            if(it.nav.status == Ship.Nav.Statue.InTransit) {
+                isInTransit.value = true
+                viewModelScope.launch {
+                    val delay = it.nav.route.arrival.time - Date().time
+                    delay(delay)
+                    isInTransit.value = false
 
+                    ship = it.copy(
+                        nav = it.nav.copy(
+                            status = Ship.Nav.Statue.InOrbit
+                        )
+                    )
+                    updateUi()
+                }
+            }
+        }
+    }
     fun requestDataUpdate() = viewModelScope.launch {
         ship = fleetService.getShip(shipId)
+        updateNavStatus()
         updateUi()
     }
 
@@ -81,6 +100,11 @@ class ShipDetailsViewModel @Inject constructor(
         miningViewModel.value = miningViewModel.value.copy(
             isVisible = ship.hasMiningLaser(),
             canMine = (ship.nav.status == Ship.Nav.Statue.Docked && ship.nav.route.destination.type == WaypointType.asteroidField)
+        )
+
+        miningSurveyViewModel.value = miningSurveyViewModel.value.copy(
+            isVisible = ship.hasSurveyor(),
+            canScan = (ship.nav.status == Ship.Nav.Statue.InOrbit && ship.nav.route.destination.type == WaypointType.asteroidField),
         )
 
         shipViewModel.value = ShipViewModel.create(ship, cargoInfoRepo)
@@ -133,39 +157,52 @@ class ShipDetailsViewModel @Inject constructor(
     }
 
     fun startMiningClick() = viewModelScope.launch {
-        val ship = this@ShipDetailsViewModel.ship ?: return@launch
+        var ship = this@ShipDetailsViewModel.ship ?: return@launch
 
         try {
-            val response = fleetService.shipExtract(shipId)
-            this@ShipDetailsViewModel.ship = ship.copy(
-                cargo = response.cargo
-            )
+            ship = basicTasks.mine(ship){
+                miningViewModel.value = miningViewModel.value.copy(
+                    yield = MiningViewModel.Yield(
+                        cargoInfoRepo.getCargoData(it.extraction.yield.symbol) ?: CargoData(),
+                        units = it.extraction.yield.units
+                    )
+                )
 
-            val delayTime = (response.cooldown.expiration.time - Date().time)
-            miningViewModel.value = miningViewModel.value.copy(
-                yield = MiningViewModel.Yield(
-                    cargoInfoRepo.getCargoData(response.extraction.yield.symbol) ?: CargoData(),
-                    units = response.extraction.yield.units
-                ),
-                isCoolingDown = true,
-                coolDownTime = (delayTime/1000).toInt()
-            )
-            coolDownTick.value = (delayTime/1000).toInt()
-            isCoolingDown.value = true
-            updateUi()
-
-            logger.log("delayTime : ${delayTime/1000}")
-            delay(delayTime)
+                isCoolingDown.value = true
+                coolingDownExpiration.value = it.cooldown.expiration
+            }
+            this@ShipDetailsViewModel.ship = ship
             isCoolingDown.value = false
-            miningViewModel.value = miningViewModel.value.copy(
-                isCoolingDown = false,
-                coolDownTime = 0
-            )
-            logger.log("delay finished")
+
+            updateUi()
 
         }
         catch (t : Throwable) {
             logger.error(t.message ?: "startMiningClick Error")
+        }
+    }
+
+    fun startMiningSurveyClick() = viewModelScope.launch {
+        val ship = this@ShipDetailsViewModel.ship ?: return@launch
+
+        try {
+            val response = fleetService.shipMiningSurvey(shipId)
+
+            miningSurveyViewModel.value = miningSurveyViewModel.value.copy(
+                surveyResults = response.surveys
+            )
+
+            val delayTime = (response.cooldown.expiration.time - Date().time)
+
+            coolDownTick.value = (delayTime/1000).toInt()
+            isCoolingDown.value = true
+
+            delay(delayTime)
+
+            isCoolingDown.value = false
+        }
+        catch (t : Throwable) {
+            logger.error(t.message ?: "startMiningSurveyClick Error")
         }
     }
 
@@ -192,164 +229,68 @@ class ShipDetailsViewModel @Inject constructor(
 
     fun onOpenMarketsClick(){
         ship?.let {
-            navSystemListener?.openSystemDetails(
-                it.nav.systemSymbol,
-                shipId = it.symbol,
-                marketsOnly = (it.nav.flightMode == Ship.Nav.FlightMode.Docked),
-                travelOptions = false)
+            navSystemListener?.openMarket(
+                systemId =it.nav.systemSymbol,
+                waypointId = ship?.nav?.waypointSymbol ?: "",
+                shipId = it.symbol)
         }
     }
 
-    data class ShipViewModel(
-        val shipId : String,
-        val name : String,
-        val state : StatusViewModel,
-        val nav : NavViewModel,
-        val fuel : FuelViewModel,
-        val cargo : CargoViewModel
-    ) {
-        companion object {
-            fun create(ship: Ship, cargoInfoRepo : CargoInfoRepo) : ShipViewModel {
-                return ShipViewModel(
-                    shipId = ship.symbol,
-                    name = ship.symbol,
-                    state = StatusViewModel.create(ship),
-                    nav = NavViewModel.create(ship),
-                    fuel = FuelViewModel.create(ship),
-                    cargo = CargoViewModel.create(ship, cargoInfoRepo)
+    fun startTaskClick() = viewModelScope.launch {
+        taskButtonEnabled.value = false
+
+        oreMineRefineSellTask.start(
+            asteroid = SellOrder(
+                destinationId = "X1-ZA40-99095A",
+                items = listOf(
+                    "IRON_ORE",
+                    "COPPER_ORE",
+                    "ALUMINUM_ORE",
+                    "SILVER_ORE",
+                    "GOLD_ORE",
+                    "PLATINUM_ORE",
+                    "SILICON_CRYSTALS",
+                    "ICE_WATER",
+                    "AMMONIA_ICE",
+                    "QUARTZ_SAND",
+                    "DIAMONDS"
                 )
-            }
-        }
-    }
-
-    data class StatusViewModel(
-        val state : String,
-        val actionState : Action,
-        val enabled : Boolean,
-    ) {
-        companion object {
-            fun create(ship: Ship) : StatusViewModel {
-                return when(val state = ship.nav.status){
-                    Ship.Nav.Statue.Docked -> {
-                        StatusViewModel(
-                            state = state.value,
-                            actionState = Action.EnterOrbit,
-                            enabled = true
-                        )
-                    }
-                    Ship.Nav.Statue.InOrbit -> {
-                        StatusViewModel(
-                            state = state.value,
-                            actionState = Action.Dock,
-                            enabled = true
-                        )
-                    }
-                    Ship.Nav.Statue.InTransit -> {
-                        StatusViewModel(
-                            state = state.value,
-                            actionState = Action.Dock,
-                            enabled = false
-                        )
-                    }
-                }
-            }
-        }
-        enum class Action(val value : String){
-            Dock("Dock"),
-            EnterOrbit("Enter Orbit")
-        }
-    }
-
-    data class NavViewModel(
-        val location : String,
-        val locationType : String,
-        val enabled : Boolean,
-    ) {
-        companion object {
-            fun create(ship: Ship) : NavViewModel {
-                return NavViewModel(
-                    location = ship.nav.route.destination.symbol,
-                    locationType = ship.nav.route.destination.type.value,
-                    enabled = (ship.nav.status == Ship.Nav.Statue.InOrbit)
-                )
-            }
-        }
-    }
-
-
-    data class FuelViewModel(
-        val capacity : Int,
-        val current : Int,
-        val enabled : Boolean,
-    ) {
-        companion object {
-            fun create(ship: Ship) : FuelViewModel {
-                return FuelViewModel(
-                    capacity = ship.fuel.capacity,
-                    current = ship.fuel.current,
-                    enabled = (ship.nav.status == Ship.Nav.Statue.Docked)
-                )
-            }
-        }
-    }
-
-    data class MiningViewModel(
-        val isVisible : Boolean = false,
-        val canMine : Boolean = false,
-        val isCoolingDown : Boolean = false,
-        val coolDownTime : Int = 0,
-        val yield : Yield? = null
-    ) {
-        data class Yield(
-            val cargoData: CargoData,
-            val units : Int
-        )
-    }
-
-    data class CargoViewModel(
-        val capacity : Int,
-        val units : Int,
-        val inventory : List<CargoItemViewModel>
-    ) {
-
-        data class CargoItemViewModel(
-            val symbol: String,
-            val name: String,
-            val description: String,
-            val units: Int,
-            val isRefinable: Boolean,
-            val canJettison: Boolean
-        ) {
-            companion object {
-                fun create(ship: Ship, inventoryItem: Ship.Cargo.InventoryItem, cargoData: CargoData, hasRefinery : Boolean): CargoItemViewModel {
-                    return CargoItemViewModel(
-                        symbol = cargoData.symbol,
-                        name = cargoData.name,
-                        description = cargoData.description,
-                        units = inventoryItem.units,
-                        isRefinable = (cargoData.refineTo != null) && hasRefinery,
-                        canJettison = (ship.nav.status == Ship.Nav.Statue.InOrbit)
+            ),
+            sellOrders = listOf(
+                SellOrder(
+                    destinationId = "X1-ZA40-11513D",
+                    warpRequired = false,
+                    items = listOf(
+                        "SILVER_ORE",
+                        "GOLD_ORE",
+                        "PLATINUM_ORE",
+                        "GOLD",
+                        "PLATINUM"
                     )
-                }
-            }
-        }
-
-        companion object {
-            fun create(ship: Ship, cargoInfoRepo : CargoInfoRepo) : CargoViewModel{
-                val hasRefinery = ship.hasRefinery()
-                return CargoViewModel(
-                    capacity = ship.cargo.capacity,
-                    units = ship.cargo.units,
-                    inventory = ship.cargo.inventory.map {
-                        CargoViewModel.CargoItemViewModel.create(
-                            ship = ship,
-                            inventoryItem = it,
-                            cargoData = cargoInfoRepo.getCargoData(it),
-                            hasRefinery = hasRefinery
-                        )
-                    }
+                ),
+                SellOrder(
+                    destinationId = "X1-ZA40-15970B",
+                    warpRequired = false,
+                    items = listOf(
+                        "ICE_WATER"
+                    )
+                ),
+                SellOrder(
+                    destinationId = "X1-ZA40-69371X",
+                    warpRequired = false,
+                    items = listOf(
+                        "IRON",
+                        "IRON_ORE",
+                        "COPPER_ORE",
+                        "ALUMINUM_ORE"
+                    )
                 )
-            }
-        }
+            )
+        )
+
+        logger.log("Task Finished")
+
+        taskButtonEnabled.value = true
+        requestDataUpdate()
     }
 }

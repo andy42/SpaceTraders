@@ -1,14 +1,20 @@
 package com.jaehl.spaceTraders.data.model
 
 import com.google.gson.annotations.SerializedName
+import java.util.Date
 
 data class Ship(
     val symbol : String = "",
+    val registration : Registration = Registration(),
     val nav : Nav = Nav(),
-    val fuel : Fuel = Fuel(),
-    val cargo : Cargo = Cargo(),
+    val crew : Crew = Crew(),
+    val frame : Frame = Frame(),
+    val reactor : Reactor = Reactor(),
+    val engine : Engine = Engine(),
     val modules : List<ShipModule> = listOf(),
-    val mounts : List<ShipMount> = listOf()
+    val mounts : List<ShipMount> = listOf(),
+    val cargo : Cargo = Cargo(),
+    val fuel : Fuel = Fuel()
 ) {
 
     fun hasRefinery() : Boolean {
@@ -43,6 +49,56 @@ data class Ship(
 
     fun getPosition() : Vector2d {
         return nav.route.destination.getPosition()
+    }
+
+    data class Registration(
+        val name : String = "",
+        val factionSymbol : String = "",
+        val role : Role = Role.Fabricator
+    )
+
+    enum class Role(val value : String) {
+        @SerializedName("FABRICATOR")
+        Fabricator("Fabricator"),
+
+        @SerializedName("HARVESTER")
+        Harvester("Harvester"),
+
+        @SerializedName("HAULER")
+        Hauler("Hauler"),
+
+        @SerializedName("INTERCEPTOR")
+        Interceptor("Interceptor"),
+
+        @SerializedName("EXCAVATOR")
+        Excavator("Excavator"),
+
+        @SerializedName("TRANSPORT")
+        Transport("Transport"),
+
+        @SerializedName("REPAIR")
+        Repair("Repair"),
+
+        @SerializedName("SURVEYOR")
+        Surveyor("Surveyor"),
+
+        @SerializedName("COMMAND")
+        Command("Command"),
+
+        @SerializedName("CARRIER")
+        Carrier("Carrier"),
+
+        @SerializedName("PATROL")
+        Patrol("Patrol"),
+
+        @SerializedName("SATELLITE")
+        Satellite("Satellite"),
+
+        @SerializedName("EXPLORER")
+        Explorer("Explorer"),
+
+        @SerializedName("REFINERY")
+        Refinery("Refinery")
     }
 
     data class Nav(
@@ -82,10 +138,48 @@ data class Ship(
         data class NavRoute(
             val departure : SystemWaypoint = SystemWaypoint(),
             val destination : SystemWaypoint = SystemWaypoint(),
-            val arrival : String = "",
-            val departureTime : String = "",
+            val arrival : Date = Date(),
+            val departureTime : Date = Date(),
         )
     }
+
+    data class Crew(
+        val current : Int = 0,
+        val required : Int = 0,
+        val capacity : Int = 0,
+        val rotation : String = "",
+        val morale : Int = 0,
+        val wages : Int = 0
+    )
+
+    data class Frame(
+        val symbol : Shipyard.ShipTypes = Shipyard.ShipTypes.ShipExplorer,
+        val name : String = "",
+        val description : String = "",
+        val condition : Int = 0,
+        val moduleSlots : Int = 0,
+        val mountingPoints : Int = 0,
+        val fuelCapacity : Int = 0,
+        val requirements : Requirements = Requirements()
+    )
+
+    data class Reactor(
+        val symbol : String = "",
+        val name : String = "",
+        val description : String = "",
+        val condition : Int = 0,
+        val powerOutput : Int = 0,
+        val requirements : Requirements = Requirements()
+    )
+
+    data class Engine(
+        val symbol : String = "",
+        val name : String = "",
+        val description : String = "",
+        val condition : Int = 0,
+        val speed : Int = 0,
+        val requirements : Requirements = Requirements()
+    )
 
     data class Fuel(
         val current : Int = 0,
@@ -109,6 +203,9 @@ data class Ship(
             val description : String = "",
             val units : Int = 0
         )
+        fun isFull() : Boolean {
+            return units >= capacity
+        }
     }
 
     data class ShipModule(
@@ -119,11 +216,7 @@ data class Ship(
         val requirements : Requirements = Requirements()
 
     ) {
-        data class Requirements(
-            val crew : Int = 0,
-            val power : Int = 0,
-            val slots : Int = 0
-        )
+
 
         enum class ModuleSymbol(val value : String){
             @SerializedName("MODULE_MINERAL_PROCESSOR_I")
@@ -178,6 +271,12 @@ data class Ship(
             ModuleShieldGenerator2("Module Shield Generator 2")
         }
     }
+
+    data class Requirements(
+        val crew : Int = 0,
+        val power : Int = 0,
+        val slots : Int = 0
+    )
 
     data class ShipMount(
         val symbol : MountSymbol = MountSymbol.MountSurveyor1,

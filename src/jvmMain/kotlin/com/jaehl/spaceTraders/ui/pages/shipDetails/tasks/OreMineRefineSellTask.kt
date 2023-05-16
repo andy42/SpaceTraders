@@ -8,7 +8,6 @@ import com.jaehl.spaceTraders.util.Logger
 import kotlinx.coroutines.delay
 import java.util.*
 import javax.inject.Inject
-import kotlin.math.log
 
 class  OreMineRefineSellTask @Inject constructor(
     private val logger : Logger,
@@ -145,34 +144,6 @@ class  OreMineRefineSellTask @Inject constructor(
         }
     }
 
-    private suspend fun transferTask(ship1 : Ship, ship2 : Ship, cargoSearch : String) : Ship {
-        var currentShip = ship1
-
-        try {
-            val inventoryItem = currentShip.cargo.inventory.firstOrNull {
-                it.symbol == cargoSearch && it.symbol != "ANTIMATTER"
-            } ?: return currentShip
-
-            var cargoSpace = (ship2.cargo.capacity - ship2.cargo.units)
-            var units = inventoryItem.units
-            if (units > cargoSpace) {
-                units = cargoSpace
-            }
-            if (units == 0) return currentShip
-            logger.log("${ship1.symbol} transfer :: inventoryItem ${inventoryItem.symbol} : $units")
-            val cargo = fleetService.shipTransferCargo(ship1.symbol, inventoryItem.symbol, units, ship2.symbol)
-            delay(1000)
-            currentShip = currentShip.copy(
-                cargo = cargo
-            )
-        } catch (t : Throwable) {
-            logger.log("${ship1.symbol} transfer :: error")
-            delay(1000)
-            return ship1
-        }
-        return currentShip
-    }
-
     private fun getSellOrder(destinationId : String) : SellOrder {
         return sellOrders.first {it.destinationId == destinationId}
     }
@@ -240,22 +211,16 @@ class  OreMineRefineSellTask @Inject constructor(
 
                     refineShip?.let {
                         refineList.forEach {
-                            val updatedShip = transferTask(ship, refineShip.ship, it.baseItemId)
-                            if(ship.cargo.units != updatedShip.cargo.units){
-                                ship = updatedShip
-                                refineShip.ship = basicTasks.getShip(refineShip.ship.symbol)
-                                delay(1000)
-                            }
+                            val response = basicTasks.transferTask(ship, refineShip.ship, it.baseItemId)
+                            ship = response.first
+                            refineShip.ship = response.second
                         }
                     }
 
                     localKeep.forEach {
-                        val updatedShip = transferTask(ship, cargoShip.ship, it)
-                        if(ship.cargo.units != updatedShip.cargo.units){
-                            ship = updatedShip
-                            cargoShip.ship = basicTasks.getShip(cargoShip.ship.symbol)
-                            delay(1000)
-                        }
+                        val response = basicTasks.transferTask(ship, cargoShip.ship, it)
+                        ship = response.first
+                        cargoShip.ship = response.second
                     }
                 }
                 is State.Surveying -> {
@@ -270,12 +235,9 @@ class  OreMineRefineSellTask @Inject constructor(
                     val cargoShip = getCargoShip()
                     cargoShip?.let{
                         refineList.forEach {
-                            val updatedShip = transferTask(ship, cargoShip.ship, it.refineItemId)
-                            if(ship.cargo.units != updatedShip.cargo.units){
-                                ship = updatedShip
-                                cargoShip.ship = basicTasks.getShip(cargoShip.ship.symbol)
-                                delay(1000)
-                            }
+                            val response = basicTasks.transferTask(ship, cargoShip.ship, it.refineItemId)
+                            ship = response.first
+                            cargoShip.ship = response.second
                         }
                     }
                     if (!coolDown.isFinished()) return

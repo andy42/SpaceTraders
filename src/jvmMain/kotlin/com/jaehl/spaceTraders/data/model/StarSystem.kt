@@ -5,7 +5,7 @@ import com.google.gson.annotations.SerializedName
 data class StarSystem(
     val symbol : String = "",
     val sectorSymbol : String = "",
-    val type : SystemType,
+    val type : SystemType = SystemType.YoungStar,
     val x : Int = 0,
     val y : Int = 0,
     val waypoints : List<SystemWaypoint> = listOf()

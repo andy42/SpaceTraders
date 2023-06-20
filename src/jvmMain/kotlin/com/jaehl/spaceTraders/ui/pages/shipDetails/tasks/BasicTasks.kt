@@ -102,6 +102,27 @@ class BasicTasks @Inject constructor(
         }
     }
 
+    suspend fun mineWithoutDelay(ship : Ship) : TaskResponse<Ship> {
+        var currentShip = ship
+        try {
+            logger.log("mining : ${ship.symbol}")
+            val response = fleetService.shipExtract(ship.symbol)
+            return TaskResponse<Ship>(
+                data = currentShip.copy(
+                    cargo = response.cargo
+                ),
+                cooldown = response.cooldown
+            )
+        }
+        catch (t : Throwable) {
+            logger.log("mining error : ${ship.symbol} full")
+            return TaskResponse(
+                data = fleetService.getShip(currentShip.symbol),
+                cooldown = Cooldown()
+            )
+        }
+    }
+
     suspend fun mine(ship : Ship, miningSurvey : MiningSurvey) : Ship {
         try {
             val response = fleetService.shipExtract(ship.symbol, miningSurvey)
@@ -273,7 +294,10 @@ class BasicTasks @Inject constructor(
             )
         } catch (t : Throwable) {
             logger.log("${ship1.symbol} transfer :: error ${t.message}")
-            return Pair(ship1, ship2)
+            return Pair(
+                fleetService.getShip(ship1.symbol),
+                fleetService.getShip(ship2.symbol)
+            )
         }
     }
 

@@ -64,7 +64,27 @@ kotlin {
                 implementation("com.squareup.retrofit2:adapter-rxjava3:2.9.0")
             }
         }
-        val jvmTest by getting
+        val jvmTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
+                implementation(kotlin("test-common"))
+                implementation(kotlin("test-annotations-common"))
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.6.4")
+                implementation("io.mockk:mockk:1.12.5")
+
+                implementation ("org.jetbrains.kotlin:kotlin-reflect:1.5.21")
+
+                // kotest
+                implementation("io.kotest:kotest-runner-junit5:5.3.1")
+                implementation("io.kotest:kotest-assertions-core:5.3.1")
+                implementation("io.kotest:kotest-property:5.3.1")
+
+                // Compose
+                implementation(compose("org.jetbrains.compose.ui:ui-test-junit4"))
+                implementation("org.junit.jupiter:junit-jupiter:5.7.0")
+                implementation("org.junit.vintage:junit-vintage-engine:5.7.0")
+            }
+        }
     }
 }
 

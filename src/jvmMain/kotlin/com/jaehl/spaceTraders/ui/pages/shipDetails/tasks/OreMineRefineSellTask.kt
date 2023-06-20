@@ -15,7 +15,7 @@ class  OreMineRefineSellTask @Inject constructor(
     private val basicTasks : BasicTasks
 ) {
 
-    private var shipStatesList : List<ShipState> = listOf()
+    private var shipStatesList : List<ShipStateImp> = listOf()
     private var miningSurvey : MiningSurvey = MiningSurvey(
         expiration = Date(0)
     )
@@ -24,6 +24,8 @@ class  OreMineRefineSellTask @Inject constructor(
     lateinit var localKeep : List<String>
 
     lateinit var asteroidField : String
+
+    private val useSurvey = false
 
     val refineList : List<RefineItem> = listOf(
         RefineItem(
@@ -36,7 +38,7 @@ class  OreMineRefineSellTask @Inject constructor(
         )
     )
 
-    suspend fun start(asteroid : SellOrder, sellOrders : List<SellOrder>) {
+    suspend fun start(asteroid : SellOrder, sellOrders : List<SellOrder>, onUpdate : (shipStates : List<ShipState>) -> Unit) {
         logger.log("OreMineRefineSellTask start")
         this.asteroidField = asteroid.destinationId
         this.sellOrders = sellOrders
@@ -59,43 +61,15 @@ class  OreMineRefineSellTask @Inject constructor(
         this.localSell = localSell
 
         shipStatesList = listOf(
-            ShipState(
+            ShipStateImp(
                 ship = basicTasks.getShip("TANGO42-1"),
-                canSurvey = true,
+                canSurvey = false,
                 canTransport = true,
                 canMine = false,
-                state = State.Surveying
+                state = State.Mining
             ),
-            ShipState(
+            ShipStateImp(
                 ship = basicTasks.getShip("TANGO42-2")
-            ),
-            ShipState(
-                ship = basicTasks.getShip("TANGO42-3")
-            ),
-            ShipState(
-                ship = basicTasks.getShip("TANGO42-4")
-            ),
-            ShipState(
-                ship = basicTasks.getShip("TANGO42-5"),
-                canSurvey = true,
-                state = State.Surveying
-            ),
-            ShipState(
-                ship = basicTasks.getShip("TANGO42-6"),
-                canSurvey = true,
-                state = State.Surveying
-            ),
-            ShipState(
-                ship = basicTasks.getShip("TANGO42-7"),
-                state = State.Refine,
-                canMine = false,
-                canRefine = true
-
-            ),
-            ShipState(
-                ship = basicTasks.getShip("TANGO42-8"),
-                canSurvey = true,
-                state = State.Surveying
             )
         )
 
@@ -111,6 +85,7 @@ class  OreMineRefineSellTask @Inject constructor(
             }
             var delayTime = getSmallestCoolDownDelay()
             logger.log("delayTime : ${(delayTime/1000).toInt()}")
+            onUpdate(shipStatesList)
             delay(delayTime)
         }
     }
@@ -129,14 +104,14 @@ class  OreMineRefineSellTask @Inject constructor(
         return delayTime
     }
 
-    private fun getCargoShip() : ShipState? {
+    private fun getCargoShip() : ShipStateImp? {
         return shipStatesList.firstOrNull { shipState ->
             shipState.canTransport
-                    && shipState.ship.nav.status == Ship.Nav.Statue.Docked
+                    && shipState.ship.nav.status == Ship.Nav.Statue.InOrbit
                     && shipState.ship.nav.route.destination.symbol == asteroidField
         }
     }
-    private fun getRefineShip() : ShipState? {
+    private fun getRefineShip() : ShipStateImp? {
         return shipStatesList.firstOrNull { shipState ->
             shipState.canRefine
                     && shipState.ship.nav.status == Ship.Nav.Statue.Docked
@@ -154,22 +129,22 @@ class  OreMineRefineSellTask @Inject constructor(
         return sellOrders[index + 1]
     }
 
-    private inner class ShipState(
-        var ship : Ship,
+    private inner class ShipStateImp(
+        override var ship : Ship,
         val canSurvey : Boolean = false,
         val canTransport : Boolean = false,
         val canRefine : Boolean = false,
         val canMine : Boolean = true,
-        var coolDown: Cooldown = Cooldown(),
+        override var coolDown: Cooldown = Cooldown(),
         var shipCoolDown : Boolean = false,
         var state : State = State.Mining
-    ) {
+    ) : ShipState{
         suspend fun setup() {
             logger.log("${ship.symbol} setup")
             when(state) {
                 is State.Mining -> {
-                    if(ship.nav.status == Ship.Nav.Statue.InOrbit) {
-                        ship = basicTasks.dock(ship)
+                    if(ship.nav.status == Ship.Nav.Statue.Docked) {
+                        ship = basicTasks.enterOrbit(ship)
                     }
                     coolDown = basicTasks.getShipCoolDown(shipId = ship.symbol) ?: Cooldown()
                 }
@@ -185,6 +160,12 @@ class  OreMineRefineSellTask @Inject constructor(
                     }
                     coolDown = basicTasks.getShipCoolDown(shipId = ship.symbol) ?: Cooldown()
                 }
+                is State.CargoWait -> {
+                    if(ship.nav.status == Ship.Nav.Statue.InOrbit) {
+                        ship = basicTasks.dock(ship)
+                    }
+                    coolDown = basicTasks.getShipCoolDown(shipId = ship.symbol) ?: Cooldown()
+                }
                 else -> {}
             }
         }
@@ -193,17 +174,14 @@ class  OreMineRefineSellTask @Inject constructor(
             when(state){
                 is State.Mining -> {
                     if (!coolDown.isFinished()) return
-                    if (miningSurvey.isExpired()) return
+                    if (useSurvey && miningSurvey.isExpired()) return
                     if(ship.cargo.isFull()){
+                        ship = basicTasks.dock(ship)
                         ship = basicTasks.sell(ship, localSell)
                         ship = basicTasks.enterOrbit(ship)
                         ship = basicTasks.jettisonTask(ship, localKeep)
-                        ship = basicTasks.dock(ship)
                     }
-                    if(canMine == false) return
-                    val response = basicTasks.mineWithoutDelay(ship, miningSurvey)
-                    ship = response.data
-                    coolDown = response.cooldown
+
 
                     if (canTransport) return
                     val cargoShip = getCargoShip() ?: return
@@ -222,6 +200,11 @@ class  OreMineRefineSellTask @Inject constructor(
                         ship = response.first
                         cargoShip.ship = response.second
                     }
+
+                    if(canMine == false) return
+                    val response = if(useSurvey) basicTasks.mineWithoutDelay(ship, miningSurvey) else basicTasks.mineWithoutDelay(ship)
+                    ship = response.data
+                    coolDown = response.cooldown
                 }
                 is State.Surveying -> {
                     if (!coolDown.isFinished()) return
@@ -257,7 +240,7 @@ class  OreMineRefineSellTask @Inject constructor(
         suspend fun calculateState() {
             when(val currentState = state){
                 is State.Mining -> {
-                    if(miningSurvey.isExpired() && canSurvey){
+                    if(miningSurvey.isExpired() && canSurvey && useSurvey){
                         ship = basicTasks.enterOrbit(ship)
                         state = State.Surveying
                         return
@@ -301,10 +284,25 @@ class  OreMineRefineSellTask @Inject constructor(
                 }
                 is State.NavigateBackToAsteroidField -> {
                     if(!coolDown.isFinished()) return
-                    ship = basicTasks.dock(ship)
-                    state = State.Mining
+                    if(canMine){
+                        state = State.Mining
+                    }
+                    else if (canTransport) {
+                        state = State.CargoWait
+                        shipCoolDown = true
+                    }
                 }
                 is State.Refine -> {}
+                is State.CargoWait -> {
+                    if(ship.cargo.isFull() && canTransport){
+                        ship = basicTasks.enterOrbit(ship)
+                        ship = basicTasks.navigateWithoutDelay(ship, sellOrders.first().destinationId)
+                        coolDown = Cooldown(
+                            expiration = ship.nav.route.arrival
+                        )
+                        state = State.TransportSell(sellOrders.first().destinationId)
+                    }
+                }
                 else -> {
                     logger.error("calculateState : error ${ship.symbol}")
                 }
@@ -324,5 +322,6 @@ class  OreMineRefineSellTask @Inject constructor(
         data class TransportSell(val destination : String) : State()
         object NavigateBackToAsteroidField : State()
         object Refine : State()
+        object CargoWait : State()
     }
 }

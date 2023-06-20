@@ -23,7 +23,7 @@ class LocalModule {
 
     @Provides
     fun marketHistoryLoader(logger: Logger, gson: Gson) : ObjectLoader<MarketHistory> {
-        return ObjectLoaderImp<MarketHistory>(logger, gson, object : TypeToken<MarketHistory>() {}.type)
+        return ObjectLoaderImp<MarketHistory>(logger, gson, object : TypeToken<MarketHistory>() {}.type, showLoadErrors = false)
     }
 
     @Provides

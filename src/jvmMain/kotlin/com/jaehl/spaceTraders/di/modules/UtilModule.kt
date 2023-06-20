@@ -1,7 +1,6 @@
 package com.jaehl.spaceTraders.di.modules
 
-import com.jaehl.spaceTraders.util.Logger
-import com.jaehl.spaceTraders.util.LoggerImp
+import com.jaehl.spaceTraders.util.*
 import dagger.Module
 import dagger.Provides
 
@@ -11,5 +10,10 @@ class UtilModule {
     @Provides
     fun logger(logger : LoggerImp) : Logger {
         return logger
+    }
+
+    @Provides
+    fun dateHelper() : DateHelper {
+        return DateHelperImp()
     }
 }

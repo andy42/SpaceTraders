@@ -1,15 +1,13 @@
 package com.jaehl.spaceTraders.di
 
-import com.jaehl.spaceTraders.di.modules.LocalModule
-import com.jaehl.spaceTraders.di.modules.ServiceModule
-import com.jaehl.spaceTraders.di.modules.NetworkModule
-import com.jaehl.spaceTraders.di.modules.UtilModule
+import com.jaehl.spaceTraders.di.modules.*
 import com.jaehl.spaceTraders.ui.dialogs.buySellCargo.BuySellCargoDialogComponent
 import com.jaehl.spaceTraders.ui.dialogs.jettisonCargo.JettisonCargoDialogComponent
 import com.jaehl.spaceTraders.ui.dialogs.registration.RegistrationDialogComponent
 import com.jaehl.spaceTraders.ui.navigation.NavHostComponent
 import com.jaehl.spaceTraders.ui.pages.homePage.HomePageComponent
 import com.jaehl.spaceTraders.ui.pages.market.MarketComponent
+import com.jaehl.spaceTraders.ui.pages.runTask.RunTaskComponent
 import com.jaehl.spaceTraders.ui.pages.shipDetails.ShipDetailsComponent
 import com.jaehl.spaceTraders.ui.pages.system.SystemComponent
 import com.jaehl.spaceTraders.ui.pages.systemSearch.SystemSearchComponent
@@ -22,7 +20,8 @@ import javax.inject.Singleton
         NetworkModule::class,
         ServiceModule::class,
         UtilModule::class,
-        LocalModule::class
+        LocalModule::class,
+        RepoModule::class
     ]
 )
 interface AppComponent {
@@ -33,6 +32,7 @@ interface AppComponent {
     fun inject(systemComponent : SystemComponent)
     fun inject(marketComponent : MarketComponent)
     fun inject(systemSearchComponent : SystemSearchComponent)
+    fun inject(runTaskComponent : RunTaskComponent)
 
     fun inject(buySellCargoDialogComponent : BuySellCargoDialogComponent)
     fun inject(jettisonCargoDialogComponent : JettisonCargoDialogComponent)

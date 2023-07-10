@@ -13,10 +13,7 @@ import com.arkivanov.essenty.parcelable.Parcelable
 import com.jaehl.spaceTraders.di.AppComponent
 import com.jaehl.spaceTraders.ui.dialogs.registration.RegistrationDialogComponent
 import com.jaehl.spaceTraders.ui.dialogs.registration.RegistrationDialogConfig
-import com.jaehl.spaceTraders.ui.navigation.Component
-import com.jaehl.spaceTraders.ui.navigation.NavBackListener
-import com.jaehl.spaceTraders.ui.navigation.NavShipListener
-import com.jaehl.spaceTraders.ui.navigation.NavSystemListener
+import com.jaehl.spaceTraders.ui.navigation.*
 import javax.inject.Inject
 
 interface NavHomePageDialogListener {
@@ -25,10 +22,11 @@ interface NavHomePageDialogListener {
 
 class HomePageComponent(
     appComponent : AppComponent,
-    private val componentContext: ComponentContext,
-    private val navBackListener : NavBackListener,
-    private val navShipListener : NavShipListener,
-    private val navSystemListener : NavSystemListener
+    componentContext: ComponentContext,
+    navBackListener : NavBackListener,
+    navShipListener : NavShipListener,
+    navSystemListener : NavSystemListener,
+    navTaskListener: NavTaskListener
 ) : Component,
     ComponentContext by componentContext,
     NavHomePageDialogListener{
@@ -65,6 +63,7 @@ class HomePageComponent(
         viewModel.navShipListener = navShipListener
         viewModel.navSystemListener = navSystemListener
         viewModel.navHomePageDialogListener = this
+        viewModel.navTaskListener = navTaskListener
     }
 
     @Composable

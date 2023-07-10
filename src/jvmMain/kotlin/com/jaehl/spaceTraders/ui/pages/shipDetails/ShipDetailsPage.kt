@@ -81,10 +81,6 @@ fun ShipDetailsPage(
                     viewModel = viewModel,
                     miningSurveyViewModel = viewModel.miningSurveyViewModel.value
                 )
-                ShipTask(
-                    modifier = Modifier,
-                    viewModel = viewModel,
-                )
             }
         }
     }
@@ -480,41 +476,4 @@ fun MiningSurvey(
         }
     }
 
-}
-
-@Composable
-fun ShipTask(
-    modifier : Modifier,
-    viewModel : ShipDetailsViewModel,
-) {
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(top = 20.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .padding(20.dp)
-        ) {
-            Button(
-                modifier = Modifier
-                    .padding(top = 10.dp),
-                onClick = {
-                    viewModel.startTaskClick()
-                },
-                enabled = viewModel.taskButtonEnabled.value
-            ) {
-                Text(
-                    modifier = Modifier,
-                    text = "Start Task"
-                )
-            }
-            if (viewModel.isCoolingDown.value) {
-                Text(
-                    modifier = modifier.padding(top = 10.dp),
-                    text = "Cool Down : ${viewModel.coolDownTick.value}"
-                )
-            }
-        }
-    }
 }

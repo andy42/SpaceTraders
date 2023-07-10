@@ -1,7 +1,7 @@
 package com.jaehl.spaceTraders.ui.pages.systemSearch
 
+import com.jaehl.spaceTraders.data.model.StarSystem
 import com.jaehl.spaceTraders.data.model.SystemWaypoint
-import com.jaehl.spaceTraders.data.model.Vector2d
 import com.jaehl.spaceTraders.data.repo.MarketRepo
 import com.jaehl.spaceTraders.data.repo.ShipyardRepo
 import com.jaehl.spaceTraders.data.repo.SystemRepo
@@ -27,10 +27,48 @@ class SystemSearchViewModel @Inject constructor(
 
     override fun init(viewModelScope: CoroutineScope) {
         super.init(viewModelScope)
+    }
 
-        viewModelScope.launch {
+    private fun distance(first : StarSystem, second : StarSystem) : Float {
+        return first.getPosition().distance(second.getPosition())
+    }
 
+    private suspend fun getWaypoints(startSystemId : String, destinationSystemId : String) : List<String>{
+
+        val startSystem = systemRepo.getStarSystem(startSystemId) ?: return listOf()
+        val destinationSystem = systemRepo.getStarSystem(destinationSystemId) ?: return listOf()
+        val distance = startSystem.getPosition().distance(destinationSystem.getPosition())
+
+        var jumpGateSystems = arrayListOf<StarSystem>()
+        systemRepo.getStarSystems().forEach {system ->
+            if(system.symbol == startSystem.symbol) return@forEach
+            if(destinationSystem.symbol == system.symbol) return@forEach
+            if(startSystem.getPosition().distance(system.getPosition()) > distance) return@forEach
+            if(destinationSystem.getPosition().distance(system.getPosition()) > distance) return@forEach
+
+            jumpGateSystems.add(system)
         }
+
+        val maxRange = 5000f
+        var destinationDistance = distance
+        var foundSystem : StarSystem? = null
+        jumpGateSystems.forEach { system ->
+            val newDistance = distance(startSystem, system)
+            val newDistance2 = distance(destinationSystem, system)
+
+
+            if(newDistance2 < destinationDistance && newDistance < maxRange){
+                logger.log("${system.symbol} distance : ${destinationSystem.getPosition().distance(system.getPosition())}")
+                destinationDistance = newDistance
+                foundSystem = system
+            }
+        }
+
+        if(foundSystem != null) {
+            return listOf(foundSystem?.symbol ?: "")
+        }
+
+        return listOf()
     }
 
     private suspend fun updateShipyards(){

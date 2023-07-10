@@ -8,12 +8,19 @@ import java.io.File
 import java.util.*
 import javax.inject.Inject
 
-class MarketRepo @Inject constructor(
+
+interface MarketRepo {
+    fun updateMarket(systemId: String, waypointId: String) : MarketHistory?
+    fun getMarketHistory(systemId: String, waypointId: String) : MarketHistory?
+}
+
+class MarketRepoImp @Inject constructor(
     private val marketHistoryLoader : ObjectLoader<MarketHistory>,
     private val localFileConfig : LocalFileConfig,
     private val systemService: SystemService
-) {
-    fun updateMarket(systemId: String, waypointId: String) : MarketHistory? {
+) : MarketRepo {
+
+    override fun updateMarket(systemId: String, waypointId: String) : MarketHistory? {
         val response = systemService.getMarket(systemId, waypointId)
         val marketHistory = marketHistoryLoader.load(localFileConfig.getMarketHistoryFile(waypointId))
 
@@ -43,8 +50,8 @@ class MarketRepo @Inject constructor(
                 imports = response.imports,
                 exports = response.exports,
                 exchange = response.exchange,
-                transactions = if(response.transactions.isNotEmpty()) marketHistory.transactions else response.transactions,
-                tradeGoods = if(response.tradeGoods.isNotEmpty()) marketHistory.tradeGoods else response.tradeGoods,
+                transactions = if(response.transactions.isNotEmpty()) response.transactions else marketHistory.transactions,
+                tradeGoods = if(response.tradeGoods.isNotEmpty()) response.tradeGoods else marketHistory.tradeGoods,
                 tradeHistory = tradeHistory
             )
             marketHistoryLoader.save(localFileConfig.getMarketHistoryFile(waypointId),newMarketHistory)
@@ -52,7 +59,7 @@ class MarketRepo @Inject constructor(
         }
     }
 
-    fun getMarketHistory(systemId: String, waypointId: String) : MarketHistory? {
+    override fun getMarketHistory(systemId: String, waypointId: String) : MarketHistory? {
         return marketHistoryLoader.load(localFileConfig.getMarketHistoryFile(waypointId))
     }
 

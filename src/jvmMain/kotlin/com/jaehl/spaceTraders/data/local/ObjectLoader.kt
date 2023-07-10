@@ -15,16 +15,18 @@ class ObjectLoaderImp<T> @Inject constructor(
     private val logger: Logger,
     private val gson: Gson,
     //using Type as Gson can not use a generic as it's compiled to object at runtime
-    private val type : Type, //type is "object : TypeToken<CLASS>() {}.type"
+    private val type : Type, //type is "object : TypeToken<CLASS>() {}.type",
+    private val showLoadErrors : Boolean = true
 ) : ObjectLoader<T> {
 
 
     override fun load(file : File) : T? {
         if(!file.exists()) {
-            println("ERROR : ${file} does not exist\n${file.absoluteFile} ")
+            if(showLoadErrors){
+                println("ERROR : ${file} does not exist\n${file.absoluteFile} ")
+            }
             return null
         }
-        //val gson = Gson().newBuilder().create()
         val fileString = file.inputStream().readBytes().toString(Charsets.UTF_8)
         return gson.fromJson<T>(fileString, type)
     }

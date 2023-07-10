@@ -10,13 +10,18 @@ import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
-@Singleton
-class SystemRepo @Inject constructor(
+interface SystemRepo {
+    fun getStarSystems() : List<StarSystem>
+    fun getStarSystem(systemId : String) : StarSystem?
+    suspend fun deapLoadAll()
+}
+
+class SystemRepoImp @Inject constructor (
     private val logger: Logger,
     private val systemService : SystemService,
     private val systemDataLoader : ObjectListLoader<StarSystem>,
     localFileConfig : LocalFileConfig
-) {
+) : SystemRepo{
     private val file : File = localFileConfig.getSystemsFile()
     private val starSystemMap = LinkedHashMap<String, StarSystem>()
     private var loaded = false
@@ -25,24 +30,32 @@ class SystemRepo @Inject constructor(
         loadLocal(true)
     }
 
-    fun getStarSystems() : List<StarSystem> {
+    override fun getStarSystems() : List<StarSystem> {
         return starSystemMap.values.toList()
     }
 
-    fun getStarSystem(systemId : String) : StarSystem?{
-        return starSystemMap[systemId]
+    override fun getStarSystem(systemId : String) : StarSystem?{
+        return starSystemMap[systemId] ?: deepLoadStarSystem(systemId)
     }
 
-    fun testUpdate(starSystem : StarSystem){
-        starSystemMap[starSystem.symbol]?.let {
-            starSystemMap[starSystem.symbol] = it.copy(
-                x = starSystem.x,
-                y = starSystem.y
-            )
+    private fun deepLoadStarSystem(systemId : String) : StarSystem?{
+        val starSystem = systemService.getSystem(systemId)
+
+        val waypointsResponse1 = systemService.getSystemWaypoints(starSystem.symbol, 1)
+        var waypoints = waypointsResponse1.data.toMutableList()
+
+        if(starSystem.waypoints.size > 10) {
+            val waypointsResponse2 = systemService.getSystemWaypoints(starSystem.symbol, 2)
+            waypoints.addAll(waypointsResponse2.data)
         }
+        starSystemMap[starSystem.symbol] = starSystem.copy(
+            waypoints = waypoints
+        )
+        save()
+        return starSystem
     }
 
-    fun save() {
+    private fun save() {
         systemDataLoader.save(file, starSystemMap.values.toList())
     }
 
@@ -60,7 +73,7 @@ class SystemRepo @Inject constructor(
         }
     }
 
-    suspend fun deapLoadAll() {
+    override suspend fun deapLoadAll() {
         val systems = systemService.getSystems()
         systems.forEachIndexed { index, starSystem ->
             logger.log("deapLoadAll : $index")
@@ -71,12 +84,10 @@ class SystemRepo @Inject constructor(
                 val waypointsResponse2 = systemService.getSystemWaypoints(starSystem.symbol, 2)
                 waypoints.addAll(waypointsResponse2.data)
             }
-
-            delay(550)
             starSystemMap[starSystem.symbol] = starSystem.copy(
                 waypoints = waypoints
             )
         }
-        systemDataLoader.save(file, starSystemMap.values.toList())
+        save()
     }
 }

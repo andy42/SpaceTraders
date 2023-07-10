@@ -28,5 +28,12 @@ fun <R, BR : ResponsePaged<R>> Call<BR>.pagedBody(): ResponsePaged<R> {
     val response = execute()
 
     if(response.isSuccessful) return response.body()!!
+    else if (response.code() == 404) {
+        throw ResourceNotFound(response.errorBody()?.string() ?: "not found")
+    }
     else throw Throwable(response.errorBody()?.string())
 }
+
+class ResourceNotFound(message : String) : Exception(message)
+
+class BadRequest(message : String) : Exception(message)

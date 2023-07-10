@@ -21,7 +21,7 @@ public annotation class BaseUrl
 class NetworkModule {
 
     @Provides
-    fun rateLimitInterceptor() : RateLimitInterceptor = RateLimitInterceptor(1.8)
+    fun rateLimitInterceptor() : RateLimitInterceptor = RateLimitInterceptor(1.5)
 
     @Provides
     fun okHttpClient(rateLimitInterceptor : RateLimitInterceptor) : OkHttpClient{

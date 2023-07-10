@@ -30,8 +30,6 @@ interface TaskUpdateListener{
     fun onTaskUpdate(agentDetailsList : List<AgentDetails>)
 }
 
-
-
 class AgentRunnerTask @Inject constructor(
     private val logger : Logger,
     private val fleetService : FleetService,
@@ -164,7 +162,6 @@ class AgentRunnerTask @Inject constructor(
 
         taskUpdateListener?.onTaskUpdate(agents.map { it.getAgentDetails() })
         return !finished
-
     }
 
     suspend fun run(){

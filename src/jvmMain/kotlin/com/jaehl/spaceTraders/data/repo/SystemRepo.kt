@@ -55,15 +55,6 @@ class SystemRepoImp @Inject constructor (
         return starSystem
     }
 
-//    override fun testUpdate(starSystem : StarSystem){
-//        starSystemMap[starSystem.symbol]?.let {
-//            starSystemMap[starSystem.symbol] = it.copy(
-//                x = starSystem.x,
-//                y = starSystem.y
-//            )
-//        }
-//    }
-
     private fun save() {
         systemDataLoader.save(file, starSystemMap.values.toList())
     }

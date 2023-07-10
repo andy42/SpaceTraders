@@ -27,7 +27,6 @@ class ObjectLoaderImp<T> @Inject constructor(
             }
             return null
         }
-        //val gson = Gson().newBuilder().create()
         val fileString = file.inputStream().readBytes().toString(Charsets.UTF_8)
         return gson.fromJson<T>(fileString, type)
     }

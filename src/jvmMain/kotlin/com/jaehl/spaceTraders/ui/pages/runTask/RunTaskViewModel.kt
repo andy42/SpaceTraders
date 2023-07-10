@@ -83,7 +83,7 @@ class RunTaskViewModel @Inject constructor(
             fleetService.getShips(1).data.map { ship ->
                 AgentRole(
                     shipId = ship.symbol,
-                    role = AgentRole.Role.None
+                    role = AgentRole.Role.StaticMiner
                 )
             }
         )
